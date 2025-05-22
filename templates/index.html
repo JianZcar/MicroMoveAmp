@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Upload Frames for Processing</title>
+<style>
+  body {
+    background: #121212;
+    color: #eee;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  h1 {
+    margin-bottom: 1rem;
+    font-weight: 700;
+  }
+  form {
+    background: #1f1f1f;
+    padding: 1.5rem 2rem;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.6);
+    width: 320px;
+  }
+  .frame-input {
+    margin-bottom: 1rem;
+  }
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    font-size: 0.95rem;
+  }
+  input[type="file"] {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #eee;
+    cursor: pointer;
+  }
+  button, input[type="submit"] {
+    background-color: #2979ff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.55rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 0.8rem;
+  }
+  button:hover, input[type="submit"]:hover {
+    background-color: #1565c0;
+  }
+  #addInputBtn {
+    width: 100%;
+  }
+  #loading {
+    margin-top: 1rem;
+    color: #999;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+  }
+  #loading .spinner {
+    border: 3px solid #ccc;
+    border-top: 3px solid #2979ff;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  #output {
+    margin-top: 2rem;
+    max-width: 90vw;
+    max-height: 70vh;
+    overflow: auto;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.7);
+  }
+  #output img {
+    display: block;
+    max-width: 100%;
+    border-radius: 12px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Upload Frames for Processing</h1>
+
+<form id="uploadForm" autocomplete="off">
+  <div id="inputsContainer">
+    <div class="frame-input">
+      <label for="frame_0">Frame 1:</label>
+      <input type="file" id="frame_0" name="frames" accept="image/*" required />
+    </div>
+    <div class="frame-input">
+      <label for="frame_1">Frame 2:</label>
+      <input type="file" id="frame_1" name="frames" accept="image/*" required />
+    </div>
+    <div class="frame-input">
+      <label for="frame_2">Frame 3:</label>
+      <input type="file" id="frame_2" name="frames" accept="image/*" required />
+    </div>
+    <div class="frame-input">
+      <label for="frame_3">Frame 4:</label>
+      <input type="file" id="frame_3" name="frames" accept="image/*" required />
+    </div>
+  </div>
+
+  <button type="button" id="addInputBtn">Add Another Frame</button><br/>
+  <input type="submit" value="Process Frames" />
+</form>
+
+<div id="loading" style="display:none;">
+  <div class="spinner"></div> Processing, please wait...
+</div>
+
+<div id="output"></div>
+
+<script>
+  const inputsContainer = document.getElementById('inputsContainer');
+  const addInputBtn = document.getElementById('addInputBtn');
+  const uploadForm = document.getElementById('uploadForm');
+  const loading = document.getElementById('loading');
+  const output = document.getElementById('output');
+
+  let frameCount = 4;
+
+  addInputBtn.addEventListener('click', () => {
+    const div = document.createElement('div');
+    div.className = 'frame-input';
+    const label = document.createElement('label');
+    label.htmlFor = `frame_${frameCount}`;
+    label.textContent = `Frame ${frameCount + 1}:`;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.id = `frame_${frameCount}`;
+    input.name = 'frames';
+    input.accept = 'image/*';
+    input.required = true;
+
+    div.appendChild(label);
+    div.appendChild(input);
+    inputsContainer.appendChild(div);
+
+    frameCount++;
+  });
+
+  uploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const files = [...document.querySelectorAll('input[type="file"][name="frames"]')]
+      .map(input => input.files[0])
+      .filter(f => f !== undefined);
+
+    if (files.length < 4) {
+      alert('Please upload at least 4 images.');
+      return;
+    }
+
+    const formData = new FormData();
+    files.forEach(file => formData.append('frames', file));
+
+    loading.style.display = 'flex';
+    output.innerHTML = '';
+
+    try {
+      const res = await fetch('/process', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert('Error: ' + (errorData.error || 'Unknown error'));
+        loading.style.display = 'none';
+        return;
+      }
+
+      const data = await res.json();
+      const img = document.createElement('img');
+      img.src = data.image;
+      output.appendChild(img);
+
+    } catch (err) {
+      alert('Request failed: ' + err.message);
+    } finally {
+      loading.style.display = 'none';
+    }
+  });
+</script>
+
+</body>
+</html>
+
